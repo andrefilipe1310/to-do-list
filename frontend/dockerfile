@@ -1,0 +1,30 @@
+
+# Etapa 1: Build
+FROM node:16 as build-stage
+
+# Define o diretório de trabalho no contêiner
+WORKDIR /app
+
+# Copia os arquivos necessários para o contêiner
+COPY package.json package-lock.json ./
+
+# Instala as dependências
+RUN npm install
+
+# Copia todo o código do projeto para o contêiner
+COPY . .
+
+# Cria o build otimizado para produção
+RUN npm run build
+
+# Etapa 2: Servir o aplicativo
+FROM nginx:alpine as production-stage
+
+# Copia o build da etapa anterior para o NGINX
+COPY --from=build-stage /app/build /usr/share/nginx/html
+
+# Expõe a porta padrão do NGINX
+EXPOSE 80
+
+# Inicia o NGINX
+CMD ["nginx", "-g", "daemon off;"]

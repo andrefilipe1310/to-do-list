@@ -1,0 +1,33 @@
+
+# Etapa 1: Construir a aplicação (Build Stage)
+FROM maven:3.8.7-openjdk-17 AS build-stage
+
+# Define o diretório de trabalho dentro do contêiner
+WORKDIR /app
+
+# Copia o arquivo pom.xml e outras dependências para o contêiner
+COPY pom.xml .
+
+# Baixa as dependências do projeto
+RUN mvn dependency:go-offline -B
+
+# Copia o código-fonte para o contêiner
+COPY src ./src
+
+# Compila o projeto e cria o JAR executável
+RUN mvn package -DskipTests
+
+# Etapa 2: Rodar a aplicação (Run Stage)
+FROM openjdk:17-jdk-slim
+
+# Define o diretório de trabalho dentro do contêiner
+WORKDIR /app
+
+# Copia o JAR gerado na etapa anterior
+COPY --from=build-stage /app/target/*.jar app.jar
+
+# Exponha a porta que sua aplicação utiliza
+EXPOSE 8080
+
+# Comando para rodar a aplicação
+CMD ["java", "-jar", "app.jar"]
