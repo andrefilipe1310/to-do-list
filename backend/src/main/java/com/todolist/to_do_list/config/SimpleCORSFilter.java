@@ -14,7 +14,9 @@ public class SimpleCORSFilter implements Filter {
 
     private final List<String> allowedOrigins = Arrays.asList(
             "http://localhost/80",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://98.84.157.19",
+            "https://98.84.157.19/3000"
     );
 
     @Override
