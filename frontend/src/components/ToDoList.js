@@ -33,11 +33,22 @@ function ToDoList() {
     if (taskDescription.trim()) {
       setLoading(true);
       try {
-        const newTask = await createTask({ description: taskDescription });
-        setTasks((prevTasks) => [...prevTasks, newTask]);
-        setTaskDescription("");
+        console.log("Task description before creation:", taskDescription);
+        let newTask = await createTask({ description: taskDescription });
+        console.log("New task created:", newTask);
+  
+        if (newTask) {
+          // Adicione a tarefa criada com o status 'CREATED'
+          const taskWithStatus = {
+            ...newTask,
+            taskStatus: newTask.taskStatus || "CREATED",
+          };
+          setTasks((prevTasks) => [...prevTasks, taskWithStatus]);
+          setTaskDescription(""); // Limpa o campo de input
+        }
       } catch (error) {
         console.error("Failed to create task:", error);
+        alert("Failed to create task. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -46,45 +57,36 @@ function ToDoList() {
     }
   };
 
-  // Atualizar status de uma tarefa
+  // Alterar status da tarefa
   const handleChangeStatus = async (id, newStatus) => {
-    const taskToUpdate = tasks.find((t) => t.id === id);
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task?.id === id ? { ...task, taskStatus: newStatus } : task
+      )
+    );
 
-    if (taskToUpdate) {
-      // Atualize localmente antes de chamar a API
-      setTasks((prevTasks) =>
-        prevTasks.map((t) =>
-          t.id === id ? { ...t, taskStatus: newStatus } : t
-        )
-      );
-
-      try {
-        const updatedTask = await updateTask(
-          { description: taskToUpdate.description, taskStatus: newStatus },
-          id
-        );
-        // Atualize com os dados retornados da API, se necessário
+    try {
+      const updatedTask = await updateTask({ taskStatus: newStatus }, id);
+      if (updatedTask) {
         setTasks((prevTasks) =>
-          prevTasks.map((t) => (t.id === id ? updatedTask : t))
+          prevTasks.map((task) =>
+            task?.id === id ? { ...task, taskStatus: updatedTask.taskStatus } : task
+          )
         );
-      } catch (error) {
-        console.error("Failed to update task:", error);
       }
+    } catch (error) {
+      console.error("Failed to update task:", error);
+      alert("An error occurred while updating the task.");
     }
   };
 
   // Excluir uma tarefa
   const handleDeleteTask = async (id) => {
-    // Atualize localmente antes de chamar a API
-    const remainingTasks = tasks.filter((t) => t.id !== id);
-    setTasks(remainingTasks);
-
     try {
       await deleteByIdTask(id);
+      setTasks((prevTasks) => prevTasks.filter((t) => t?.id !== id));
     } catch (error) {
       console.error("Failed to delete task:", error);
-      // Reverter caso a exclusão falhe
-      setTasks((prevTasks) => [...prevTasks, tasks.find((t) => t.id === id)]);
     }
   };
 
