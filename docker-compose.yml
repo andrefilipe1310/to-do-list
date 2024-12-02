@@ -3,28 +3,25 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend # Pasta onde está o Dockerfile do backend
+      context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8080:8080" # Porta exposta pelo backend
+      - "8080:8080"
     environment:
       DB_USERNAME: todolist_01ip_user
       DB_PASSWORD: 4aLc5xfqJXhh8t8gb9q4tlz7cS41smG3
       DB_HOST: dpg-ct4g5n56l47c73f96a00-a.oregon-postgres.render.com
       DB_PORT: 5432
       DB_NAME: todolist_01ip
-      ZABBIX_SERVER: zabbix-server  # Variável de ambiente para o Zabbix Agent
     depends_on:
       - database
 
   frontend:
     build:
-      context: ./frontend # Pasta onde está o Dockerfile do frontend
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:80" # Porta exposta pelo frontend
-    environment:
-      ZABBIX_SERVER: zabbix-server  # Variável de ambiente para o Zabbix Agent
+      - "3000:80"
     depends_on:
       - backend
 
@@ -37,36 +34,58 @@ services:
       POSTGRES_USER: your-database-username
       POSTGRES_PASSWORD: your-database-password
       POSTGRES_DB: your-database-name
-      ZABBIX_SERVER: zabbix-server  # Variável de ambiente para o Zabbix Agent
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  zabbix-database:
+    image: postgres:15
+    container_name: zabbix_db
+    ports:
+      - "5433:5432" # Porta alternativa para evitar conflito
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbixpass
+      POSTGRES_DB: zabbix
+    volumes:
+      - zabbix_postgres_data:/var/lib/postgresql/data
 
   zabbix-server:
     image: zabbix/zabbix-server-pgsql:alpine-5.0.0
     container_name: zabbix-server
     environment:
-      - ZABBIX_DB_HOST=database
-      - ZABBIX_DB_NAME=zabbix
-      - ZABBIX_DB_USER=zabbix
-      - ZABBIX_DB_PASSWORD=zabbixpass
+      DB_SERVER_HOST: zabbix-database
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbixpass
+      POSTGRES_DB: zabbix
+    depends_on:
+      - zabbix-database
     ports:
-      - "10051:10051"  # Porta para a comunicação com os agentes Zabbix
+      - "10051:10051"
 
   zabbix-web:
     image: zabbix/zabbix-web-nginx-pgsql:alpine-5.0.0
     container_name: zabbix-web
     environment:
-      - ZABBIX_SERVER_HOST=zabbix-server
+      ZBX_SERVER_HOST: zabbix-server
+      DB_SERVER_HOST: zabbix-database
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbixpass
+      POSTGRES_DB: zabbix
+    depends_on:
+      - zabbix-server
     ports:
-      - "8081:8080"  # Porta para acessar a interface web do Zabbix
+      - "8081:8080"
 
   zabbix-agent:
     image: zabbix/zabbix-agent:alpine-5.0.0
     container_name: zabbix-agent
     environment:
-      - ZABBIX_SERVER=zabbix-server  # Endereço do servidor Zabbix
-    network_mode: "host"  # Monitorando o host diretamente
+      ZBX_SERVER_HOST: zabbix-server
+    depends_on:
+      - zabbix-server
+    ports:
+      - "10050:10050"
 
 volumes:
   postgres_data:
-  zabbix_data:
+  zabbix_postgres_data:
