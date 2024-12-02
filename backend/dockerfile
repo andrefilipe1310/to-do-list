@@ -1,33 +1,27 @@
+# Primeiro estágio: construção
+FROM maven:3.8.5-openjdk-17 AS build
 
-# Etapa 1: Construir a aplicação (Build Stage)
-FROM maven:3.8.7-openjdk-17 AS build-stage
-
-# Define o diretório de trabalho dentro do contêiner
+# Diretório de trabalho
 WORKDIR /app
 
-# Copia o arquivo pom.xml e outras dependências para o contêiner
+# Copia os arquivos
 COPY pom.xml .
-
-# Baixa as dependências do projeto
-RUN mvn dependency:go-offline -B
-
-# Copia o código-fonte para o contêiner
 COPY src ./src
 
-# Compila o projeto e cria o JAR executável
-RUN mvn package -DskipTests
+# Executa o comando de build
+RUN mvn install -e -X
 
-# Etapa 2: Rodar a aplicação (Run Stage)
+# Segundo estágio: imagem final
 FROM openjdk:17-jdk-slim
 
-# Define o diretório de trabalho dentro do contêiner
+# Copia o jar da construção anterior
+COPY --from=build /app/target/to-do-list-0.0.1-SNAPSHOT.jar /app/app.jar
+
+# Diretório de trabalho
 WORKDIR /app
 
-# Copia o JAR gerado na etapa anterior
-COPY --from=build-stage /app/target/*.jar app.jar
-
-# Exponha a porta que sua aplicação utiliza
+# Expõe a porta da aplicação
 EXPOSE 8080
 
-# Comando para rodar a aplicação
+# Comando para iniciar a aplicação
 CMD ["java", "-jar", "app.jar"]
